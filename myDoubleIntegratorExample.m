@@ -1,4 +1,4 @@
-function [P, K, U_prime] = myDoubleIntegratorExample(S, N)
+function [P, K, U_prime] = myDoubleIntegratorExample(S, N, x0)
 P = [];
 K = [];
 U_prime = [];
@@ -11,11 +11,15 @@ R = 10;
 
 P_lasttimestep = S;
 
-for j = N:1
+for j = (N - 1):1
     P_at_timestep = myP(j, S, N);
     P = [P P_at_timestep];
     
-    R
+    K_at_timestep = (R + B' * myP(k + 1,S , N)* B)^(-1) * B' * myP(k + 1,S , N) * A;
+    K = [K K_at_timestep];
+end
+
+
 
 end
 
@@ -30,7 +34,7 @@ R = 10;
 if k == N
     P = S;
 else
-    P = A' * myP(k + 1, S, N) * A + Q - A' * myP(k + 1, S, N) * B * (R + B' * myP(k + 1, S, N) * B)^(-1)*
-    (B' * myP(k + 1, S, N) * A);
-
-
+    P = A' * myP(k + 1, S, N) * A + Q - A' * myP(k + 1, S, N) * B * (R + B' * myP(k + 1, S, N) * B)^(-1) * (B' * myP(k + 1, S, N) * A);
+end
+end
+    
