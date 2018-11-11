@@ -1,0 +1,147 @@
+from casadi import *
+import numpy as np
+import pdb
+
+#x = MX.sym('x')
+#y1 = x**2
+#y2 = x**3
+
+#f = Function('f', [x], [y1, y2], ['x'], ['y1', 'y2'])
+
+#print(f(x=2))
+
+
+#f = Function('name', [input], [output], ['inputname'], ['outputname'])
+
+
+#c = 3
+#print(B * c)
+
+#print(A)
+#print(B)
+#x1 = 1
+#x2=2
+#x = vertcat(x1, x2)
+
+#print(A*x)
+#print(B)
+#B = np.array([[0],[1]])
+#print(B.T)
+
+#sys.exit()
+T=10
+N = 3
+
+A = np.array([[1, 1],[0, 1]])
+B = np.array([[0],[1]])
+Q = np.eye(2)
+P = np.eye(2)
+R = 0.1
+
+x1 = MX.sym('x1')
+x2 = MX.sym('x2')
+x = vertcat(x1, x2)
+u = MX.sym('u')
+
+nNext = mtimes(A, x) + B * u
+L = mtimes(x.T, mtimes(Q, x)) + u.T * R * u
+
+
+Fn = Function('Fn', [x, u], [nNext, L], ['x', 'u'], ['nNext', 'L'])
+#Fk = Fn(x=[[2], [1]]), u = 1
+#Fn(x=[[2], [1]]), u=1
+
+#test point
+Fk = Fn(x=np.array([1,2]), u=0)
+print(Fk['nNext'])
+print(Fk['L'])
+
+# use np.dot
+#
+#start setting problem up
+w=[]
+w0 = []
+lbw = []
+ubw = []
+J = 0
+g=[]
+lbg = []
+ubg = []
+
+Xk = MX.sym('X0', 2)
+w += [Xk]
+lbw += [-1, -1]
+ubw += [-1, -1]
+w0 += [-1, -1]
+
+for k in range(0, N):
+    # New NLP variable for the control
+    #str is taking string
+
+    #naming
+    Uk = MX.sym('U_' + str(k))
+
+    w   += [Uk]
+    #constraints in u
+    lbw += [-1]
+    ubw += [1]
+    w0  += [0]
+
+    # Integrate till the end of the interval
+    #calc next step, xNext
+    Fk = Fn(x=Xk, u=Uk)
+    Xk_end = Fk['nNext']
+    #prev cost + new stage cost
+    J=J+Fk['L']
+
+    # New NLP variable for state at end of interval
+    Xk = MX.sym('X_' + str(k+1), 2)
+    w   += [Xk]
+    #constraints from problem statement
+    lbw += [-15, -15]
+    ubw += [15, 15]
+    w0  += [0, 0]
+
+    # Add equality constraint
+    g   += [Xk_end-Xk]
+    #set the bounds to be 0 bc they have to be 0
+    lbg += [0, 0]
+    ubg += [0, 0]
+
+
+#xN = vertcat(w[0], w[1])
+#print(w[2 * N])
+#sys.exit()
+
+J = J + mtimes(w[2 * N].T, mtimes(P, w[2 * N]))
+
+
+prob = {'f': J, 'x': vertcat(*w), 'g': vertcat(*g)}
+solver = nlpsol('solver', 'ipopt', prob);
+
+# Solve the NLP
+#f is the function to minimize, what we'll change(variables) is x, g is g
+#our variable is called w
+sol = solver(x0=w0, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
+#make them numbers you can easily use
+w_opt = sol['x'].full().flatten()
+
+# Plot the solution
+#just parsing
+x1_opt = w_opt[0::3]
+x2_opt = w_opt[1::3]
+u_opt = w_opt[2::3]
+
+print(u_opt)
+
+
+
+
+
+
+
+
+
+
+
+#define a function that takes x and u and gives xk+1, and L the addition to J
